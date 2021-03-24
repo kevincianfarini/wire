@@ -15,8 +15,6 @@
  */
 package com.squareup.wire.schema
 
-import com.google.common.jimfs.Configuration
-import com.google.common.jimfs.Jimfs
 import com.squareup.javapoet.JavaFile
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.wire.ProtoAdapter
@@ -27,9 +25,9 @@ import com.squareup.wire.kotlin.RpcCallStyle
 import com.squareup.wire.kotlin.RpcRole
 import java.io.File
 import java.io.IOException
-import java.nio.charset.StandardCharsets.UTF_8
-import java.nio.file.Files
+import okio.Path.Companion.toPath
 import okio.buffer
+import okio.fakefilesystem.FakeFileSystem
 import okio.source
 
 /**
@@ -37,8 +35,8 @@ import okio.source
  * testing.
  */
 class RepoBuilder {
-  private val fs = Jimfs.newFileSystem(Configuration.unix())
-  private val root = fs.getPath("/source")
+  private val fs = FakeFileSystem()
+  private val root = "/source".toPath()
   private val schemaLoader = SchemaLoader(fs)
   private var schema: Schema? = null
 
@@ -47,14 +45,16 @@ class RepoBuilder {
       "unexpected file extension: $name"
     }
 
-    val relativePath = fs.getPath(name)
+    val relativePath = name.toPath()
     try {
-      val resolvedPath = root.resolve(relativePath)
+      val resolvedPath = root / relativePath
       val parent = resolvedPath.parent
       if (parent != null) {
-        Files.createDirectories(parent)
+        fs.createDirectories(parent)
       }
-      Files.write(resolvedPath, protoFile.toByteArray(UTF_8))
+      fs.write(resolvedPath) {
+        writeUtf8(protoFile)
+      }
     } catch (e: IOException) {
       throw AssertionError(e)
     }
