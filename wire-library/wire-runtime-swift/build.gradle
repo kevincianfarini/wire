@@ -59,6 +59,11 @@ task generateSwiftProtos(type: JavaExec) {
     }
 
     actualFiles.each {new File(it).delete() }
+
+    exec {
+      workingDir "."
+      commandLine "sh", "-c", "find src/main/swift/wellknowntypes -type f | xargs sed -i '' 's/import Wire//g'"
+    }
   }
 }
 
